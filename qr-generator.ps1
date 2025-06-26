@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Generates a QR code image from a user-provided URL and saves it to the desktop.
 

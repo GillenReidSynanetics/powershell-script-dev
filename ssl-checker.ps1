@@ -1,3 +1,25 @@
+<#
+.SYNOPSIS
+    Checks an SSL certificate file and generates a detailed HTML report.
+
+.DESCRIPTION
+    This script prompts the user to select a PEM-formatted SSL certificate file using a graphical file dialog.
+    It validates the file, checks for the presence of OpenSSL, and extracts certificate details such as subject, issuer, and expiry date.
+    The script then generates a styled HTML report containing the extracted information and the full certificate output, saves it to the user's Desktop, and opens it in the default web browser.
+
+.PARAMETER certFile
+    The default certificate file name (not used if file is selected via dialog). Default is "cert.pem".
+
+.NOTES
+    - Requires OpenSSL to be installed and available in the system PATH.
+    - The HTML report is saved to the Desktop as "SSL-Certificate-Report.html".
+    - Created by AI as the user requested HTML formatting assistance.
+
+.EXAMPLE
+    .\ssl-checker.ps1
+    # Prompts for certificate file, generates and opens HTML report.
+
+#>
 param (
     [string]$certFile = "cert.pem"
 )
