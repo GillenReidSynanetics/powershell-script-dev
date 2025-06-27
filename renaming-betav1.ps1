@@ -5,9 +5,6 @@ $mapping = @(
     @{ Pattern = "*provider_server*.key"; Key = "FHIR_API_GATEWAY_HTTPS_CERTIFICATE_PRIVATE_KEY"; Folder = "ssl" },
     @{ Pattern = "*provider_client*.pem"; Key = "REGIONAL_DATAPROVIDER_HTTPS_CLIENT_CERTIFICATE" ; Folder = "pix" },
     @{ Pattern = "*provider_client*.key"; Key = "REGIONAL_DATAPROVIDER_HTTPS_CLIENT_CERTIFICATE_KEY"; Folder = "pix" }
-    @{ Pattern = "#"; Key ="*"; Folder = "#" } # Placeholder for future entries
-    @{ Pattern = "#"; Key ="*"; Folder = "#" } # Placeholder for future entries
-    @{ Pattern = "#"; Key ="*"; Folder = "#" } # Placeholder for future entries
 )
 
 # Locate working directory
@@ -63,8 +60,4 @@ Write-Host "`n🔄 Updated values:" -ForegroundColor Cyan
 $fileMatches.GetEnumerator() | ForEach-Object {
     Write-Host "  $($_.Key) = $($_.Value)"
 }
-# Write updated .env back to file
 Write-Host "`.env updated successfully." -ForegroundColor Green
-else {
-    Write-Host "No updates made to .env." -ForegroundColor Yellow
-}

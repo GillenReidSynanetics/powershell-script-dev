@@ -1,15 +1,16 @@
+
 <#
 .SYNOPSIS
 Generates a change request template for upgrading a service image version.
 
 .DESCRIPTION
-This script prompts the user for change request details such as CR ID, ODS Code (service name), current version, and new version. It then generates a pre-formatted change request template including sections for description, implementation plan, backout plan, and test plan. The template is saved as a text file named after the CR ID in the script's directory.
+This script prompts the user for a Change Request (CR) ID, ODS Code (service name), current version, and new version. It then generates a change request template file containing sections for description, implementation plan, backout plan, and test plan. The template is intended to be reviewed and edited before submitting the change request.
 
 .PARAMETER changeID
-The Change Request (CR) ID for the upgrade.
+The Change Request ID entered by the user.
 
 .PARAMETER serviceName
-The ODS Code or name of the service being upgraded.
+The ODS Code or service name entered by the user.
 
 .PARAMETER versionFrom
 The current version of the service image.
@@ -18,20 +19,17 @@ The current version of the service image.
 The new version of the service image to upgrade to.
 
 .OUTPUTS
-A text file containing the change request template, saved in the script's directory.
+A text file named after the CR ID, containing the change request template.
 
 .NOTES
-- The generated template is a starting point and must be reviewed and edited before submitting the change request.
-- The script includes placeholders for additional details such as URLs, script names, and test details.
-- Ensure all sections are completed and validated as per organizational change management procedures.
+- The script displays a warning to ensure the template is reviewed before submission.
+- The template includes placeholders for additional details such as URLs, script names, and test details.
+- The script must be run in an environment where user input is possible.
 
 .EXAMPLE
-PS> .\image-upgrade-generator.ps1
-# Follows prompts to enter CR ID, ODS Code, current version, and new version.
-# Generates a change request template text file in the script directory.
+PS> .\image-upgrade-gen-dev.ps1
+# Prompts for required information and generates a change request template file.
 #>
-
-
 $changeID = Read-Host "Enter the CR ID"
 $serviceName = Read-Host "Enter ODS Code"
 $versionFrom = Read-Host "Enter Current Version"
@@ -49,7 +47,7 @@ $template = @"
 ==============================
 🔹 DESCRIPTION
 ==============================
-This change involves updating the $serviceName from version $versionFrom to version $versionTo. The upgrade is part of the scheduled platform maintenance window on $changeWindow. This update includes performance enhancements and minor bug fixes.
+This change involves updating the $serviceName` from version $versionFrom to version $versionTo. The upgrade is part of the scheduled platform maintenance window on $changeWindow. This update includes performance enhancements and minor bug fixes.
 
 ==============================
 🔹 IMPLEMENTATION PLAN
@@ -57,7 +55,7 @@ This change involves updating the $serviceName from version $versionFrom to vers
 1. Use the following information to remote onto the enviroment in question - (Add URL Here)
 2. Navigate the pathway to the service directory (Use confluence to find the path).
 3. Use the (Script Name Here) to backup .env and docker-compose.yml files to ensure rollback capability.
-4. Review https://hub.docker.com/r/synaneticsltd/synfhir-store/tags to identify the latest version of the FHIR Store image.
+4. Review https://hub.docker.com/r/synaneticsltd/synfhir-store/tags to identify the latest version of the `$serviceName` image.
 5. Note the existing version using https://synanetics.atlassian.net/wiki/spaces/SYNS/pages/2909929589/FHIR+Appliance+Support
 6. Open the docker-compose.yml using notepad ++ in admin mode - identify the $serviceName service, text should resemble (Add Text Here).
 7. Update the image tag to $versionTo in the docker-compose.yml file.
