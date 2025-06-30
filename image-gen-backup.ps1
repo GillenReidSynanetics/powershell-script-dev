@@ -16,11 +16,9 @@
 .EXAMPLE
   PS> .\image-gen-backup.ps1
   Enter the Change Request ticket number: 12345
-  ✅ Backed up 'docker-compose.yml'
-  ✅ Backed up '.env'
-  🎯 Backup complete. Folder: C:\path\to\script\CR-12345 20240610_153000
-  📦 Backup folder compressed to: C:\path\to\script\CR-12345 20240610_153000.zip
-  🧹 Original backup folder removed.
+  Backed up 'docker-compose.yml'
+  Backed up '.env'
+  Original backup folder removed.
 
 #>
 

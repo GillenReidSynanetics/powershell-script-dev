@@ -1,7 +1,7 @@
 
 # Original idea was to replicate the functionality of WinDirStat in PowerShell, but it has evolved into a more complex script.
 # This script scans all folders in a specified drive, calculates their sizes, and displays the results in a formatted table.
-# Faults are that it takes 2 long to generate results despite the parralelization and runspace pool.
+# Faults are that it takes 2 long to generate results despite the runspace pool.
 # So there is a limited use case for this script, but it is a good example of how to use runspaces in PowerShell.
 # Subsequently it has been relegated to a "nice to have" script rather than a "must have" script.
 
