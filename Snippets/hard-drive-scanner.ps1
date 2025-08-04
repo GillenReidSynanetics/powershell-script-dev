@@ -1,71 +1,52 @@
-
-# Original idea was to replicate the functionality of WinDirStat in PowerShell, but it has evolved into a more complex script.
-# This script scans all folders in a specified drive, calculates their sizes, and displays the results in a formatted table.
-# Faults are that it takes 2 long to generate results despite the runspace pool.
-# So there is a limited use case for this script, but it is a good example of how to use runspaces in PowerShell.
-# Subsequently it has been relegated to a "nice to have" script rather than a "must have" script.
+# Optimized script to replicate WinDirStat functionality in PowerShell.
+# This version is significantly faster by performing a single file system scan and using Group-Object for aggregation.
 
 function Get-AllFolderSizes {
-    param([string]$Path = "C:\") # edit to decide which drive you want to scan
+    param([string]$Path = "C:\")
 
-    Write-Host "Scanning all folders in $Path... This may take a while." -ForegroundColor Cyan
+    Write-Host "Starting a full file system scan of $Path... This may take a while." -ForegroundColor Cyan
 
-    $folders = Get-ChildItem -Path $Path -Directory -ErrorAction SilentlyContinue  # add -recurse if you want to scan all subfolders
     $startTime = Get-Date
-    $folderSizes = [System.Collections.ArrayList]::new()
 
-    # Define the RunspacePool
-    $RunspacePool = [runspacefactory]::CreateRunspacePool(1, [environment]::ProcessorCount)
-    $RunspacePool.Open()
-    $totalFolders = $folders.Count
+    # Step 1: Get all files on the drive in a single, efficient pass.
+    # The -Force parameter is added to include hidden and system files.
+    $allFiles = Get-ChildItem -Path $Path -Recurse -File -Force -ErrorAction SilentlyContinue
+
+    Write-Host "Scan complete. Aggregating file sizes..." -ForegroundColor Green
+    
+    $totalFiles = $allFiles.Count
     $processed = 0
-    $Jobs = @()
 
-    foreach ($folder in $folders) {
-        $Runspace = [powershell]::Create().AddScript({
-            param ($FolderPath)
-
-            $size = Get-ChildItem -Path $FolderPath -Recurse -ErrorAction SilentlyContinue |
-                    Where-Object { -not $_.PSIsContainer } |
-                    Measure-Object -Property Length -Sum
-            
-            Write-Host "." -NoNewline # Ticker/loader indicating the scan is ongoing
-            [PSCustomObject]@{
-                Folder = $FolderPath
-                SizeGB = [math]::Round($size.Sum / 1GB, 2)
-            }
-        }).AddArgument($folder.FullName)
-
-        $Runspace.RunspacePool = $RunspacePool
-        $Jobs += @{Pipe = $Runspace; Status = $Runspace.BeginInvoke() }
-    }
-
-    # Collect results
-    foreach ($Job in $Jobs) {
-        $result = $Job.Pipe.EndInvoke($Job.Status)
-        if ($result) { $folderSizes.Add($result) | Out-Null }
-        $Job.Pipe.Dispose()
+    # Step 2: Aggregate the file sizes using a foreach loop and progress bar
+    $folderSizes = @()
+    
+    # Group the files by their top-level folder
+    # We use regex to find the root folder path from the FullName property
+    # E.g., 'C:\Program Files\something.exe' will be grouped by 'C:\Program Files'
+    $allFiles | Group-Object { $_.FullName -replace "^$([regex]::Escape($Path))([^\\]+\\).*$", '$1' } | ForEach-Object {
         $processed++
-
-        # Update Progress Bar (work in progress)
-        $percentComplete = ($processed / $totalFolders) * 100
-        $elapsedTime = New-TimeSpan -Start $startTime -End (Get-Date)
-        $estimatedTotalTime = if ($processed -gt 0) { ($elapsedTime.TotalSeconds / $processed) * $totalFolders } else { 0 }
-        $remainingTime = [math]::Round(($estimatedTotalTime - $elapsedTime.TotalSeconds) / 60, 2)
-
-        Write-Host "`nCurrently Processing: $($Job.Folder)" -ForegroundColor Yellow
-        Write-Host "Scanned: $processed of $totalFolders folders ($([math]::Round($percentComplete, 2))%)"
-        Write-Host "Elapsed Time: $([math]::Round($elapsedTime.TotalSeconds, 2)) seconds"
-        Write-Host "Estimated Time Remaining: $remainingTime minutes`n"
-
-        Write-Progress -Activity "Scanning C:\ Drive" -Status "$processed of $totalFolders folders scanned" -PercentComplete $percentComplete
+        
+        # Display the progress bar
+        Write-Progress -Activity "Aggregating folder sizes..." -Status "Processing: $($_.Name)" -PercentComplete (($processed / $totalFiles) * 100)
+        
+        # Create a custom object with the folder name and the calculated size
+        $folderSizes += [PSCustomObject]@{
+            Folder = "$Path$($_.Name)"
+            SizeGB = [math]::Round( ($_.Group | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+        }
     }
+    
+    # Clean up the progress bar
+    Write-Progress -Activity "Aggregating folder sizes..." -Completed
+    
+    # Step 3: Display the results
+    $endTime = Get-Date
+    $elapsedTime = New-TimeSpan -Start $startTime -End $endTime
+    
+    Write-Host "Aggregation complete." -ForegroundColor Green
+    Write-Host "Total time elapsed: $($elapsedTime.TotalSeconds) seconds."
+    Write-Host "--------------------"
 
-    # Close RunspacePool
-    $RunspacePool.Close()
-    $RunspacePool.Dispose()
-
-    # Sort and display results
     $folderSizes | Sort-Object -Property SizeGB -Descending | Format-Table -AutoSize
 }
 
