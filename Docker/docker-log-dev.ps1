@@ -1,61 +1,99 @@
-
-
 <#
 .SYNOPSIS
-    Filters error and warning lines from a specified log file and exports them to a CSV file.
+    Parses a log file for lines containing 'ERROR' or 'WARNING' and exports the results to a CSV file.
 
 .DESCRIPTION
-    This script prompts the user for a CSV output file name, reads a specified log file, and searches for lines containing "ERROR" or "WARNING".
-    Matching lines are collected with a timestamp and exported to a CSV file on the user's Desktop.
-    If no matching lines are found, a message is displayed.
-
-.PARAMETER fileName
-    The base name (without extension) for the output CSV file. The user is prompted to enter this value.
+    This script prompts the user for a CSV output file name, searches a specified log file for lines containing
+    the keywords 'ERROR' or 'WARNING', and attempts to parse each matching line for timestamp, log level, and message.
+    The results are exported to a CSV file on the user's Desktop. If a matching line does not fit the expected format,
+    it is still included in the output with a note indicating parsing failure.
 
 .PARAMETER logFilePath
-    The path to the log file to be scanned for error and warning entries. This must be set in the script.
+    The path to the log file to be analyzed. Update this variable with the actual path to your log file.
 
-.PARAMETER csvOutput
-    The full path to the output CSV file, constructed from the user's Desktop path and the provided file name.
+.PARAMETER csvFileName
+    The base name for the output CSV file (without extension), prompted from the user.
+
+.PARAMETER csvOutputPath
+    The full path to the output CSV file, constructed using the user's Desktop and the provided file name.
+
+.PARAMETER pattern
+    The regular expression pattern used to identify lines of interest (default: 'ERROR|WARNING').
+
+.INPUTS
+    None. The script prompts the user for input.
+
+.OUTPUTS
+    A CSV file containing the parsed log entries with columns: Timestamp, Level, and Message.
 
 .NOTES
-    - The script creates the log file if it does not exist.
-    - The error patterns to capture can be modified in the $errorCapture array.
-    - Each matching log line is exported with the current timestamp and the log content.
+    - The script expects log lines in the format: 'YYYY-MM-DD HH:MM:SS [LEVEL] Message'.
+    - Lines that match the pattern but not the expected format are still included in the CSV with a parsing note.
+    - If no matching lines are found, a success message is displayed and no CSV is created.
 
 .EXAMPLE
-    # Run the script and follow the prompt to enter a file name for the CSV output.
-    # The script will process the specified log file and export error/warning lines to the Desktop.
+    # Run the script and follow the prompts to generate a CSV report of errors and warnings from a log file.
 #>
-
-
-$fileName = Read-Host "Please enter file name for the CSV output (without extension)"
 $logFilePath = " add the path to your log file here, e.g., C:\path\to\your\logfile.log"
-$csvOutput = "$env:USERPROFILE\Desktop\$fileName.csv" # Define the path to the log file and the output CSV file
-$errorCapture = @("ERROR", "WARNING") # Define the error capture patterns here
-$errorEntries = @() # Initialize an array to hold error entries
-# Ensure the log file exists
+$csvFileName = Read-Host "Please enter file name for the CSV output (without extension)"
+
+
+$csvOutputPath = "env:USERPROFILE\Desktop\$fileName.csv" # Define the path to the log file and the output CSV file
+$pattern = 'ERROR|WARNING' # Define the error capture patterns here
+
+
 if (-not (Test-Path -Path $logFilePath)) {
-    New-Item -ItemType File -Path $logFilePath -Force
+    Write-Error "Log file does not exist at the specified path: $logFilePath"
+    Read-Host "Press Enter to exit"
+    return
 }
 
-Get-Content -path $logFilePath | ForEach-Object {
+Write-Host "Searching for lines containing '$pattern' in $logFilePath..." -ForegroundColor Yellow
+
+# --- Processing ---
+# Efficiently capture all matching lines and their data in one go.
+$errorEntries = Get-Content -Path $logFilePath | ForEach-Object {
     $line = $_
 
-    if ($errorCapture | Where-Object { $line -match $_ }) {
-        $errorEntries += [PSCustomObject]@{
-            Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-            LogLine   = $line
+    # Fast check using the combined regex pattern.
+    if ($line -match $pattern) {
+        
+        # This regex assumes a format like 'YYYY-MM-DD HH:MM:SS [LEVEL] Message'
+        # It uses named capture groups to easily grab the data.
+        $regex = '^(?<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\s\[(?<level>\w+)\]\s(?<message>.*)$'
+
+        if ($line -match $regex) {
+            # Create a structured object with data parsed from the line.
+            [PSCustomObject]@{
+                Timestamp = $Matches.timestamp
+                Level     = $Matches.level
+                Message   = $Matches.message
+            }
+        }
+        else {
+            # If a line has a keyword but doesn't match the format, save it as-is.
+            [PSCustomObject]@{
+                Timestamp = 'COULD NOT PARSE'
+                Level     = 'N/A'
+                Message   = $line
+            }
         }
     }
 }
 
-
+# --- Output Results ---
 if ($errorEntries.Count -eq 0) {
-    Write-Host "No error or warning lines found in the log file." -ForegroundColor Green
-    return
+    Write-Host "Success! No lines matching '$pattern' were found." -ForegroundColor Green
 } else {
-    $errorEntries | Export-Csv -Path $csvOutput -NoTypeInformation -Encoding UTF8
+    try {
+        # Export the collected data to the CSV file.
+        $errorEntries | Export-Csv -Path $csvOutputPath -NoTypeInformation -Encoding UTF8
+        Write-Host "Success! Found $($errorEntries.Count) matching entries." -ForegroundColor Green
+        Write-Host "Report saved to: $csvOutputPath"
+    }
+    catch {
+        Write-Error "Could not save the CSV file. Error: $_"
+    }
 }
 
-Write-Host "Filtered error lines written to: $csvOutput"
+Read-Host "Press Enter to exit"
