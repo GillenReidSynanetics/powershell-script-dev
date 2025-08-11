@@ -7,22 +7,34 @@
 
 $ODS = Read-Host -Prompt "Please enter your ODS to search (ensure in CAPS e.g. 'RCU')"
 
-$outputFile = "$env:USERPROFILE\Desktop\Generated-Rule-Report1.csv"
-$Username = "synanetics-system"
-$Password = "Kc1cmCxYDG^bP@cMDP5u"
-$credentials = "$($Username):$($Password)"
-$credentialBytes = [System.Text.Encoding]::ASCII.GetBytes($credentials)
-$EncodedCredentials = [System.Convert]::ToBase64String($credentialBytes)
+# $outputFile = "$env:USERPROFILE\Desktop\Generated-Rule-Report1.csv"
+# $Username = "synanetics-system"
+# $Password = "Kc1cmCxYDG^bP@cMDP5u"
+# $credentials = "$($Username):$($Password)"
+# $credentialBytes = [System.Text.Encoding]::ASCII.GetBytes($credentials)
+# $EncodedCredentials = [System.Convert]::ToBase64String($credentialBytes)
+# $baseUrl = "https://elastic-production.kb.europe-west2.gcp.elastic-cloud.com/s/synanetics/api/alerting/rules/_find?per_page=1000"
+# $pageQuery = "&filter=alert.attributes.tags:$ODS"
+# $uri = "$baseUrl"
+
+$outputFile = "$env:USERPROFILE\Desktop\Generated-Rule-Report-$ODS.csv" 
+$credentialPath = "$env:USERPROFILE\Desktop\elastic-credentials.xml"
+
+if (-not (Test-Path -Path $credentialPath)) {
+    Write-Error "Credential file not found at '$credentialPath'. Please create it first."
+    exit 1
+}
+
+$credentials = Import-Clixml -Path $credentialPath
+
 $baseUrl = "https://elastic-production.kb.europe-west2.gcp.elastic-cloud.com/s/synanetics/api/alerting/rules/_find?per_page=1000"
 $pageQuery = "&filter=alert.attributes.tags:$ODS"
-$uri = "$baseUrl"
+$uri = "$baseUrl$pageQuery" # Refined URL with ODS filter
 
 # This block of code constructs the API request headers and makes the API call to retrieve alerting rules.
 
 $headers = @{
-    Authorization         = "Basic $($EncodedCredentials)"
     "kbn-xsrf"            = "true"
-    "content-type"        = "application/json"
     "elastic-api-version" = "2023-10-31"
 }
 
@@ -45,7 +57,7 @@ else {
 
 # Performs query and converts to JSON - generates and outputs to terminal - potentially provide flexibility to REST method?
 
-$response = Invoke-RestMethod -Uri "$uri$pageQuery" -Method Get  -Headers $headers 
+$response = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -Credential $credentials
 $jsonOutput = $response | ConvertTo-Json -Depth 10
 $jsonOutput
 
