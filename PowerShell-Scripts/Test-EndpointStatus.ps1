@@ -23,17 +23,18 @@
 #>
 
 
-$envFilePath = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
-
-$envFilePath = ".env"
+$scriptFilePath = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+$envFilePath = Join-Path -Path $scriptFilePath -ChildPath ".env"
 
 if (-not (Test-Path $envFilePath)) {
     Write-Host "Environment file not found"
+    Read-Host "Press enter to exit"
     exit 1
 }
-$envContent = Get-Content $envFilePath  | Where-Object { $_ -match "^(?!#)(.+?)=(http[s]?:\/\/.+)$" }
 
-$endpoints = @()
+$envContent = Get-Content $envFilePath  | Where-Object { $_ -match "^(?!#)(.+?)=(http[s]?:\/\/.+)$" }
+$endpoints = @{}
+
 foreach ($line in $envContent) {
     if ($line -match "^(.+?)=(http[s]?:\/\/.+)$") {
         $key = $matches[1].Trim()
@@ -68,6 +69,4 @@ foreach ($key in $endpoints.Keys) {
 }
 
 
-Write-Host $results | Format-Table -AutoSize
-Write-Host "Task complete - Please press enter to close"
-Read-Host
+$results | Format-Table -AutoSize
