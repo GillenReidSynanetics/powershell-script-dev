@@ -20,7 +20,6 @@
     File Name  : reboot-script.ps1
     Author     : GillenReidSynanetics
     Version    : 1.0
-    Date       : YYYY-MM-DD
     Requires   : PowerShell 5.0 or later
 
 .EXAMPLE

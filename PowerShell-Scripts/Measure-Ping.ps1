@@ -19,7 +19,8 @@
     Ping Result saved to log file, txt file should be in same directory - attach to ticket for inspection 'C:\path\to\current\directory\ping_log.txt'
 
 .NOTES
-    Made by Gillen
+    Made by Gillen Reid
+    File: ping-logger.ps1
 #>
 
 # User prompted for IP address.
