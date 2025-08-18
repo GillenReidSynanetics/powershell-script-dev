@@ -1,69 +1,65 @@
-<#
-.SYNOPSIS
-  Creates a backup of existing certificates and Docker environment files.
-
-.DESCRIPTION
-  This script sets the execution policy to RemoteSigned, creates a timestamped backup folder, 
-  and copies the .env file, docker-compose.yml file, and the 'jwt' and 'ssl' directories 
-  into the backup folder.
-
-.PARAMETER None
-  This script does not take any parameters.
-
-.OUTPUTS
-  None
-
-.NOTES
-  The script creates a backup folder with a timestamp in its name and copies the specified files 
-  and directories into it. The backup folder is located in the same directory as the script.
-
-.EXAMPLE
-  To run the script, execute the following command in PowerShell:
-  .\replication-script.ps1
-
-  This will create a backup folder and copy the necessary files and directories into it.
-
-#>
-
-
+# The main 'try' block wraps the entire operation.
 try {
-  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+    
+    $scriptPath = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $backupFolder = Join-Path -Path $scriptPath -ChildPath "BackupFolder $timestamp"
+    
+    # Create the backup folder. If this fails, the whole script should stop.
+    New-Item -ItemType Directory -Path $backupFolder -Force | Out-Null
+ 
+    # Define the items to back up
+    $itemsToBackup = @(
+        @{ Name = 'docker-compose-manda.yml'; IsDirectory = $false },
+        @{ Name = 'docker-compose.yml'; IsDirectory = $false },
+        @{ Name = 'certs'; IsDirectory = $true },
+        @{ Name = 'ssl'; IsDirectory = $true } 
+    )
 
-  $scriptPath = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+    # Loop through each item to back it up
+    foreach ($item in $itemsToBackup) {
+        # FIX: Each item gets its OWN try/catch block inside the loop.
+        # This allows the loop to continue even if one item fails.
+        try {
+            $sourcePath = Join-Path -Path $scriptPath -ChildPath $item.Name
+            
+            if (Test-Path -Path $sourcePath) {
+                $copyParams = @{
+                    Path        = $sourcePath
+                    Destination = $backupFolder
+                    Force       = $true
+                    ErrorAction = 'Stop'
+                }
 
-  $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+                if ($item.IsDirectory) {
+                    $copyParams.Add('Recurse', $true)
+                }
+                
+                Copy-Item @copyParams
+                Write-Host "✅ Copied $($item.Name)"
+            } 
+            else {
+                Write-Warning "⚠️ '$($item.Name)' does not exist and was skipped."
+            }
+        }
+        catch {
+            # This catch block is specific to the item that failed.
+            Write-Error "❌ An error occurred while copying '$($item.Name)': $_"
+        }
+    }
 
-  $backupFolder = Join-Path -Path $scriptPath -ChildPath "BackupFolder $timestamp"
-
-  New-Item -ItemType Directory -Path $backupFolder -Force
-  
-  if (Test-Path -Path (Join-Path -Path $scriptPath -ChildPath 'docker-compose-manda.yml')) {
-    Copy-Item -Path (Join-Path -Path $scriptPath -ChildPath 'docker-compose-manda.yml') -Destination $backupFolder -ErrorAction Stop
-  } else {
-    Write-Warning "'docker-compose-manda.yml' file does not exist."
-  }
-
-  if (Test-Path -Path (Join-Path -Path $scriptPath -ChildPath 'docker-compose.yml')) {
-    Copy-Item -Path (Join-Path -Path $scriptPath -ChildPath 'docker-compose.yml') -Destination $backupFolder -ErrorAction Stop
-  } else {
-    Write-Warning "'docker-compose.yml' file does not exist."
-  }
-
-  if (Test-Path -Path (Join-Path -Path $scriptPath -ChildPath 'certs')) {
-    Copy-Item -Path (Join-Path -Path $scriptPath -ChildPath 'certs') -Destination $backupFolder -Recurse -ErrorAction Stop
-  } else {
-    Write-Warning "'certs' directory does not exist."
-  }
-
-  #if (Test-Path -Path (Join-Path -Path $scriptPath -ChildPath 'ssl')) {
-  #  Copy-Item -Path (Join-Path -Path $scriptPath -ChildPath 'ssl') -Destination $backupFolder -Recurse -ErrorAction Stop
-  #} else {
-  #  Write-Warning "'ssl' directory does not exist."
-  #}
-
-  Write-Host "Backup of Existing Certificates complete and docker .env and compose files, inspect in $backupFolder"
-} catch {
-  Write-Error "An error occurred: $_"
+    # REFINEMENT: The success message belongs at the end of the 'try' block.
+    Write-Host "`nBackup process completed. See output for details." -ForegroundColor Green
 }
-
-# Tested Locally and Verified as working
+catch {
+    # FIX: The main 'catch' block now correctly follows the main 'try' block.
+    # This will only catch critical errors, like failing to create the backup folder.
+    Write-Error "A critical error occurred: $_"
+}
+finally {
+    # REFINEMENT: The 'finally' block is for cleanup that ALWAYS runs.
+    # Restoring the execution policy is a perfect use case for 'finally'.
+    Write-Verbose "Restoring original execution policy."
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Undefined -Force
+}
