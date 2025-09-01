@@ -112,7 +112,13 @@ try {
             $status = "Unknown"
 
             try {
-                if ($extension -in @(".crt", ".pem")) {
+
+                if ((Get-Item $fullPath).Length -eq 0) {
+                    $status = "File is empty"
+                    Write-Warning "⚠️ File is empty: $($path.Value)"
+                    continue
+                }
+                elseif ($extension -in @(".crt", ".pem")) {
                     $certContent = Get-Content -Path $path.Value -Raw
                     $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
                     $cert.Import([System.Text.Encoding]::UTF8.GetBytes($certContent))
