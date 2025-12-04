@@ -16,17 +16,27 @@ Please enter the JSON you wish to retrieve: https://api.example.com/data
 - Requires internet access to retrieve remote JSON resources.
 - Outputs errors and exits with code 1 on failure.
 #>
+
+# Variables and User Input
 $url = Read-Host "Please enter the JSON you wish to retrieve"
+$fileOutput = "$PSScriptRoot\json_output.json"
+
+# Error handling
 if (-not $url) {
     Write-Error "No URL provided. Exiting."
     exit 1
 }
+
+# Try and Catch block for retrieving and parsing JSON
 try {
     $responseJson = Invoke-RestMethod -Uri $url -ErrorAction Stop
     $jsonOutput = $responseJson | ConvertTo-Json -Depth 10
-    write-output $jsonOutput
+    Write-Output $jsonOutput | Format-List | Out-File -FilePath $fileOutput -Encoding utf8
+    Write-Output "JSON data successfully retrieved and saved to $fileOutput" 
 }
 catch {
     Write-Error "Failed to retrieve or parse JSON from the provided URL. $_"
     exit 1
 }
+
+# End of Script

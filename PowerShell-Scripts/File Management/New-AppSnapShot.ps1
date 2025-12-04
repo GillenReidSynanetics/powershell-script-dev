@@ -39,7 +39,7 @@ try {
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss" # Create a timestamp for the backup folder - allows for multiple backups without overwriting and for easy identification
     $backupFolder = Join-Path -Path $scriptPath -ChildPath "BackupFolder $timestamp" # Create a timestamped backup folder
     $envFilePath = Join-Path -Path $scriptPath -ChildPath ".env" # Path to the .env file
-    $reportFilePath = Join-Path -path $scriptPath -ChildPath "report.json" # Path to the report file
+    $reportFilePath = Join-Path -Path $scriptPath -ChildPath "report.json" # Path to the report file
     $report = @() # Initialize an array to hold report data
 
     # Create master backup folder
